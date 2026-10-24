@@ -35,6 +35,13 @@ class WindowsActions {
     await _run('shutdown.exe', const ['/s', '/t', '0']);
   }
 
+  Future<void> hibernate() async {
+    require(supported, '当前平台不支持下载完成后休眠');
+    // /h requests hibernation without forcing applications to close. Keep the
+    // cancellable countdown in the app, just as for shutdown.
+    await _run('shutdown.exe', const ['/h']);
+  }
+
   static Future<void> _startDetached(
     String executable,
     List<String> arguments,
@@ -47,6 +54,11 @@ class WindowsActions {
     List<String> arguments,
   ) async {
     final result = await Process.run(executable, arguments);
-    require(result.exitCode == 0, '系统未接受关机请求，请检查权限后重试');
+    require(
+      result.exitCode == 0,
+      arguments.contains('/h')
+          ? '系统未接受休眠请求，请检查是否已启用休眠及当前权限后重试'
+          : '系统未接受关机请求，请检查权限后重试',
+    );
   }
 }

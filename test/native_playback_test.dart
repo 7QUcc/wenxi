@@ -191,6 +191,70 @@ void main() {
         },
       );
       test(
+        'Opening Aliyun HLS from the beginning does not seek past its first segment',
+        () async {
+          final root = Directory('test/fixtures/player-hls').absolute;
+          final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+          addTearDown(() => server.close(force: true));
+          server.listen((request) async {
+            try {
+              final file = File(
+                '${root.path}/${request.uri.pathSegments.last}',
+              );
+              request.response.headers.set(
+                'Content-Type',
+                request.uri.path.endsWith('.m3u8')
+                    ? 'application/vnd.apple.mpegurl'
+                    : 'video/mp2t',
+              );
+              request.response.add(await file.readAsBytes());
+              await request.response.close();
+            } catch (_) {
+              // Opening another source and teardown can cancel media reads.
+            }
+          });
+          final native = player.platform as NativePlayer;
+          await native.setProperty('vo', 'null');
+          await native.setProperty('vid', 'auto');
+          final source = DownloadSpec(
+            url: 'http://127.0.0.1:${server.port}/video.m3u8',
+            fileName: 'hls-video.mp4',
+            profile: 'aliyun',
+          );
+          // A preceding resume must not leak its start option into a fresh open.
+          for (final start in [
+            Duration.zero,
+            const Duration(seconds: 10),
+            Duration.zero,
+          ]) {
+            await HttpOverrides.runWithHttpOverrides(
+              () => backend.open(source, start),
+              _RealHttp(),
+            );
+            await until(() => (player.state.width ?? 0) > 0);
+            expect(player.state.playing, isFalse);
+            expect(backend.failure, isNull);
+            expect(
+              player.state.position.inMilliseconds,
+              closeTo(start.inMilliseconds, 250),
+              reason:
+                  'The requested start must not advance to the next HLS segment.',
+            );
+            await backend.play();
+            await until(
+              () =>
+                  player.state.position >=
+                  start + const Duration(milliseconds: 300),
+            );
+            await backend.pause();
+            expect(
+              player.state.position,
+              lessThan(start + const Duration(seconds: 2)),
+            );
+          }
+        },
+      );
+      test(
         'Native network playback sends the required cookie and supports Range seeking',
         () async {
           final bytes = await sample.readAsBytes(),
@@ -252,7 +316,9 @@ void main() {
           );
           expect(backend.streamingDescription, startsWith('最多 8 个连接'));
           final native = player.platform as NativePlayer;
-          expect(double.parse(await native.getProperty('cache-secs')), 30);
+          expect(double.parse(await native.getProperty('cache-secs')), 90);
+          expect(await native.getProperty('cache-pause-initial'), 'yes');
+          expect(double.parse(await native.getProperty('cache-pause-wait')), 3);
           expect(
             int.parse(await native.getProperty('demuxer-max-bytes')),
             8 * 1024 * 1024,
@@ -435,7 +501,9 @@ void main() {
               response.headers.set('Content-Type', 'video/x-matroska');
               response.headers.set('ETag', '"streamed-fixture"');
               response.contentLength = end - start + 1;
-              const prefix = 128 * 1024;
+              // The startup reserve is now three seconds; keep enough real
+              // packets for it while holding the remainder of the range.
+              const prefix = 256 * 1024;
               if (end - start + 1 > prefix) {
                 response.add(bytes.sublist(start, start + prefix));
                 await response.flush();
