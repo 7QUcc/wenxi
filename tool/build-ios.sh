@@ -50,7 +50,7 @@ for file in baidu-api cloud-command parser-hub; do
 done
 
 cd "$root"
-flutter pub get
+flutter pub get --enforce-lockfile
 # Flutter writes Generated.xcconfig and runs pod install; xcodebuild then builds
 # with signing fully disabled so no target asks for a development team.
 flutter build ios --release --no-codesign --config-only "${defines[@]}"
