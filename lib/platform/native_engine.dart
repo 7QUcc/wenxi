@@ -15,6 +15,7 @@ abstract class NativeTransport {
   Future<void> dispose();
 }
 
+/// Method-channel transport; iOS bridges the same protocol to gomobile.
 class AndroidGopeedTransport extends NativeTransport {
   bool _connected = false;
   bool _parserUsed = false;

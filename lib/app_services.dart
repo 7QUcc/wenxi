@@ -266,7 +266,8 @@ class AppServices extends ChangeNotifier {
     );
     transfer = transferHttp ?? TransferHttp();
     final backgroundTransfers =
-        platformFeatures && (Platform.isAndroid || Platform.isWindows);
+        platformFeatures &&
+        (Platform.isAndroid || Platform.isWindows || Platform.isIOS);
     lan =
         lanService ??
         LanService(
@@ -494,6 +495,14 @@ class AppServices extends ChangeNotifier {
       cache = Directory(paths.str('cache'));
       destination = cache;
       transport = AndroidGopeedTransport();
+    } else if (Platform.isIOS) {
+      data = Directory(
+        p.join((await getApplicationSupportDirectory()).path, 'AsterLink'),
+      );
+      cache = Directory(p.join(data.path, 'downloads'));
+      // Documents is shown as the app's folder in the Files app.
+      destination = await getApplicationDocumentsDirectory();
+      transport = AndroidGopeedTransport();
     } else {
       require(Platform.isWindows, '当前版本支持 Android 和 Windows');
       data = Directory(
@@ -571,6 +580,13 @@ class AppServices extends ChangeNotifier {
       });
       await externalOpens.refresh();
     }
+    if (platformFeatures && Platform.isIOS) {
+      nativeChannel.setMethodCallHandler((call) async {
+        if (call.method == 'serviceTimeout') {
+          await _stopBackgroundTransfers(call.method);
+        }
+      });
+    }
     if (platformFeatures && Platform.isAndroid) {
       await importLegacy();
       nativeChannel.setMethodCallHandler((call) async {
@@ -604,15 +620,7 @@ class AppServices extends ChangeNotifier {
         if (call.method == 'pauseAll' ||
             call.method == 'serviceTimeout' ||
             call.method == 'downloadServiceStalled') {
-          await lan.stop();
-          await uploads.stopAll(reason: '后台传输已停止，返回应用后可重新上传');
-          await downloads.pauseAll(
-            reason: switch (call.method) {
-              'serviceTimeout' => '系统已暂停长时间后台下载，返回应用后可继续',
-              'downloadServiceStalled' => '后台下载状态已中断，请返回应用继续',
-              _ => '',
-            },
-          );
+          await _stopBackgroundTransfers(call.method);
         }
         if (call.method == 'downloadServiceRestarted') {
           await downloads.recoverInterrupted();
@@ -644,6 +652,18 @@ class AppServices extends ChangeNotifier {
     }
     store.addListener(_changed);
     _changed();
+  }
+
+  Future<void> _stopBackgroundTransfers(String method) async {
+    await lan.stop();
+    await uploads.stopAll(reason: '后台传输已停止，返回应用后可重新上传');
+    await downloads.pauseAll(
+      reason: switch (method) {
+        'serviceTimeout' => '系统已暂停长时间后台下载，返回应用后可继续',
+        'downloadServiceStalled' => '后台下载状态已中断，请返回应用继续',
+        _ => '',
+      },
+    );
   }
 
   Future<void> importLegacy() async {

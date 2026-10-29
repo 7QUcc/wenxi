@@ -71,6 +71,7 @@ app.*.map.json
 keystore.properties
 native/bin/
 native/.tools/
+native/.tools-ios/
 
 # Local accounts, diagnostics, reference material and release outputs.
 /logs/

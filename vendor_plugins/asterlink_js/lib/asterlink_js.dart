@@ -9,7 +9,11 @@ class SourceJsBridge {
     final library = DynamicLibrary.open(
       libraryPath ??
           Platform.environment['ASTERLINK_JS_LIBRARY'] ??
-          (Platform.isWindows ? 'asterlink_js.dll' : 'libasterlink_js.so'),
+          (Platform.isWindows
+              ? 'asterlink_js.dll'
+              : Platform.isIOS
+              ? 'asterlink_js.framework/asterlink_js'
+              : 'libasterlink_js.so'),
     );
     _new = library
         .lookupFunction<Pointer<Void> Function(), Pointer<Void> Function()>(

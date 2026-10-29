@@ -3,6 +3,8 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../app_services.dart';
 import '../diagnostics/app_log.dart';
 import '../diagnostics/diagnostic_bundle.dart';
@@ -122,6 +124,12 @@ class MinePage extends StatelessWidget {
         'mime': 'application/json',
       });
       return result != null;
+    }
+    if (Platform.isIOS) {
+      // No save panel on iOS; Documents is visible in the Files app.
+      final directory = await getApplicationDocumentsDirectory();
+      await File(p.join(directory.path, name)).writeAsBytes(bytes, flush: true);
+      return true;
     }
     final location = await getSaveLocation(
       suggestedName: name,
@@ -556,22 +564,24 @@ class MinePage extends StatelessWidget {
             ? '不限速'
             : '${formatBytes(settings.speedLimit)}/s',
       ),
-      _tile(
-        context,
-        CupertinoIcons.folder,
-        '下载保存目录',
-        settings.destination ?? '系统下载目录',
-        () async {
-          final directory = await busy(
-            context,
-            services.files.chooseDirectory,
-            label: '选择下载目录…',
-          );
-          if (directory != null && context.mounted) {
-            await _changeDownloadDirectory(context, directory);
-          }
-        },
-      ),
+      // iOS saves into the app's Files folder; picked folders need bookmarks.
+      if (!Platform.isIOS)
+        _tile(
+          context,
+          CupertinoIcons.folder,
+          '下载保存目录',
+          settings.destination ?? '系统下载目录',
+          () async {
+            final directory = await busy(
+              context,
+              services.files.chooseDirectory,
+              label: '选择下载目录…',
+            );
+            if (directory != null && context.mounted) {
+              await _changeDownloadDirectory(context, directory);
+            }
+          },
+        ),
       if (settings.destination != null)
         Padding(
           padding: const EdgeInsets.only(left: 54, bottom: 8),

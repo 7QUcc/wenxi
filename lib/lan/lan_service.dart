@@ -138,7 +138,7 @@ class LanService extends ChangeNotifier {
     }
     name = store.data
         .str('lanDeviceName')
-        .ifEmpty(Platform.isAndroid ? '我的手机' : '我的电脑');
+        .ifEmpty(Platform.isAndroid || Platform.isIOS ? '我的手机' : '我的电脑');
     connectionCode = Random.secure()
         .nextInt(1000000)
         .toString()

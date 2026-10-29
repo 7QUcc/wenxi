@@ -37,6 +37,10 @@ class StateStore extends ChangeNotifier {
   static const keyName = LocalStateKey.name;
   static const secureStorage = FlutterSecureStorage(
     aOptions: LocalStateKey.options,
+    // Background downloads keep writing state while the device is locked.
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
   );
   StateStore._(this.file, this._key, this._data, [this._localKey]);
   final File? file;
