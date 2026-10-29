@@ -14,6 +14,8 @@ jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 75
+    permissions:
+      contents: write
     env:
       PUB_HOSTED_URL: https://pub.dev
       FLUTTER_STORAGE_BASE_URL: https://storage.googleapis.com
@@ -34,3 +36,13 @@ jobs:
           path: build/ios/ipa/*.ipa
           if-no-files-found: error
           retention-days: 14
+      - name: Publish to the ios-latest pre-release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # One moving pre-release keeps a stable download page for the newest build.
+          gh release delete ios-latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
+          gh release create ios-latest build/ios/ipa/*.ipa --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease --title "iOS 测试版（未签名）" \
+            --notes "分支 ${GITHUB_REF_NAME}，提交 ${GITHUB_SHA::7}。未签名 IPA，请用自己的证书签名后安装。"
