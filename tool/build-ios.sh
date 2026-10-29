@@ -50,6 +50,13 @@ for file in baidu-api cloud-command parser-hub; do
 done
 
 cd "$root"
+# pubspec.lock records the pub.flutter-io.cn mirror. When building against
+# pub.dev, point the same pinned versions and hashes at pub.dev for this build.
+if [[ "${PUB_HOSTED_URL:-}" == "https://pub.dev" ]]; then
+  cp pubspec.lock "$root/build-ios-pubspec.lock.orig"
+  trap 'mv -f "$root/build-ios-pubspec.lock.orig" "$root/pubspec.lock"' EXIT
+  sed -i '' 's#https://pub.flutter-io.cn#https://pub.dev#' pubspec.lock
+fi
 flutter pub get --enforce-lockfile
 # Flutter writes Generated.xcconfig and runs pod install; xcodebuild then builds
 # with signing fully disabled so no target asks for a development team.
