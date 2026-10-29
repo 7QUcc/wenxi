@@ -12,6 +12,8 @@ Pod::Spec.new do |s|
   # Gopeed.xcframework is produced by tool/build-ios.sh and never committed.
   s.vendored_frameworks = 'Frameworks/Gopeed.xcframework'
   s.frameworks       = 'AVFoundation', 'UIKit'
+  # Go's net package resolves DNS through libresolv on Apple platforms.
+  s.libraries        = 'resolv'
   s.dependency 'Flutter'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 end
