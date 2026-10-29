@@ -1,0 +1,2 @@
+// Shares the app's version numbers so the extension matches its host app.
+#include? "../Flutter/Generated.xcconfig"

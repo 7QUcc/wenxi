@@ -1,6 +1,7 @@
 import Flutter
 import Foundation
 import Gopeed
+import UIKit
 
 /// iOS side of `com.asterlink.app/native`. Only the methods Dart calls on iOS
 /// are implemented; everything else reports notImplemented.
@@ -12,6 +13,7 @@ public final class AsterLinkNativeBridge: NSObject {
   // desktop pipe and Android's single native worker.
   private let engineQueue = DispatchQueue(label: "com.asterlink.app.gopeed", qos: .userInitiated)
   private let keepAlive = BackgroundKeepAlive()
+  private let liveActivity = TransferLiveActivity()
 
   private init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "com.asterlink.app/native", binaryMessenger: messenger)
@@ -24,6 +26,13 @@ public final class AsterLinkNativeBridge: NSObject {
     channel.setMethodCallHandler { [weak self] call, result in
       self?.handle(call, result: result)
     }
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(willTerminate),
+      name: UIApplication.willTerminateNotification, object: nil)
+  }
+
+  @objc private func willTerminate() {
+    liveActivity.endNow()
   }
 
   public static func register(with messenger: FlutterBinaryMessenger) {
@@ -50,6 +59,7 @@ public final class AsterLinkNativeBridge: NSObject {
     case "foreground":
       let active = (args["active"] as? NSNumber)?.intValue ?? 0
       keepAlive.update(active: active > 0)
+      liveActivity.update(args)
       result(nil)
     default:
       result(FlutterMethodNotImplemented)

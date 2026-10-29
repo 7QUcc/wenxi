@@ -39,6 +39,8 @@
 	<string>用于在同一局域网内与其他设备互传文件。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>用于把播放器截图和图片保存到相册。</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

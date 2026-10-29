@@ -14,6 +14,8 @@ Pod::Spec.new do |s|
   s.frameworks       = 'AVFoundation', 'UIKit'
   # Go's net package resolves DNS through libresolv on Apple platforms.
   s.libraries        = 'resolv'
+  # Live Activities need iOS 16.1+; the app itself still runs on iOS 15.
+  s.weak_frameworks  = 'ActivityKit'
   s.dependency 'Flutter'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 end
