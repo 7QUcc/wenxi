@@ -51,12 +51,25 @@ done
 
 cd "$root"
 flutter pub get
-flutter build ios --release --no-codesign "${defines[@]}"
+# Flutter writes Generated.xcconfig and runs pod install; xcodebuild then builds
+# with signing fully disabled so no target asks for a development team.
+flutter build ios --release --no-codesign --config-only "${defines[@]}"
+derived="$root/build/ios/xcode"
+log="$root/build/ios/xcodebuild.log"
+if ! xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
+  -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+  -derivedDataPath "$derived" \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+  build >"$log" 2>&1; then
+  grep -nE 'error:|requires a development team|Signing for' "$log" | head -60 || true
+  tail -40 "$log"
+  exit 1
+fi
 
 output="$root/build/ios/ipa"
 rm -rf "$output/Payload"
 mkdir -p "$output/Payload"
-cp -R "$root/build/ios/iphoneos/Runner.app" "$output/Payload/"
+cp -R "$derived/Build/Products/Release-iphoneos/Runner.app" "$output/Payload/"
 version="$(sed -n 's/^version: *\([^+]*\).*/\1/p' "$root/pubspec.yaml")"
 ipa="$output/AsterLink-$version-unsigned.ipa"
 rm -f "$ipa"
